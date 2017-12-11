@@ -8,9 +8,11 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 log = logging.getLogger(__name__)
 
-CLEANING_SCHEDULE = {'1_kitchen':'Snadrian','2_big_bath':'Dempan', '3_small_bath':'cakism', '4_livingroom':'Luuli'}
+
+#### MAKE STATIC OR IN A FILE OR SOMETHING
+CLEANING_SCHEDULE = {'1_kitchen':'Snadrian','2_big_bath':'Dempan', '3_small_bath':'kakan', '4_livingroom':'Luuli'}
 ROOMS = {'1_kitchen':'Köket', '2_big_bath':'Stora badrummet', '3_small_bath':'Lilla badrummet', '4_livingroom':'Vardagsrum+hall'}
-USERS = {24106420:'cakism'}
+USERS = {11:'Snadrian', 22:'Dempan', 33:'Luuli', 24106420:'kakan'}
 
 # Reply to /start with greeting message
 def start(bot, update, args, job_queue, chat_data):
@@ -29,8 +31,12 @@ def echo(bot, update):
     update.message.reply_text(update.message.text)
 
 def print_tasks(bot,update):
-    user_id = update.message.from_user.id
+    user = update.message.from_user
 
+    for room, room_user in CLEANING_SCHEDULE.items():
+        if room_user == user.first_name:
+            print('Printing tasks for room: ' + room + " and user " + str(user))
+            bot.send_message(user.id, text='ett två tre')
 
 # Log errors caused by Updates
 def error(bot, update, error):
@@ -89,6 +95,7 @@ def main():
         pass_job_queue=True,
         pass_chat_data=True))
     dp.add_handler(CommandHandler('print', print_schedule_command, pass_job_queue=True))
+    dp.add_handler(CommandHandler('print_my_tasks', print_tasks))
     dp.add_handler(CommandHandler('rotate', rotate_schedule))
     dp.add_handler(CommandHandler('help', help))
 
