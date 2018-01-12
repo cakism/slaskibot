@@ -1,6 +1,7 @@
 # coding=UTF-8
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-import config, logging, telegram
+from config import App
+import logging, telegram
 
 #Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -12,11 +13,11 @@ log = logging.getLogger(__name__)
 #### MAKE STATIC OR IN A FILE OR SOMETHING
 CLEANING_SCHEDULE = {'1_kitchen':'Snadrian','2_big_bath':'Dempan', '3_small_bath':'kakan', '4_livingroom':'Luuli'}
 ROOMS = {'1_kitchen':'Köket', '2_big_bath':'Stora badrummet', '3_small_bath':'Lilla badrummet', '4_livingroom':'Vardagsrum+hall'}
-USERS = {11:'Snadrian', 22:'Dempan', 33:'Luuli', 24106420:'kakan'}
+USERS = {'snadrian_id':'Snadrian', 'dempan_id':'Dempan', 'luuli_id':'Luuli', 'cakism_id':'kakan'}
 
 # Reply to /start with greeting message
 def start(bot, update, args, job_queue, chat_data):
-    update.message.reply_text('---SLASKTRATTITRON INITIALIZED---')
+    update.message.reply_text('---SLASKTRATTITRON INITIALIZED---\nUse command /help for available commands')
     chat_id = update.message.chat_id
     job = job_queue.run_once(print_cleaning_schedule, 3, context=chat_id)
     chat_data['job'] = job
@@ -24,19 +25,28 @@ def start(bot, update, args, job_queue, chat_data):
 
 # Reply to /help with instructions of use
 def help(bot, update):
-    update.message.reply_text('This bot is intended to keep track of the städschema for Slasktrattarnas Kollektiv. The following commands can be used: --TODO--')
-
-# Echo the last message
-def echo(bot, update):
-    update.message.reply_text(update.message.text)
+    update.message.reply_text("""This bot is intended to keep track of the städschema for Slasktrattarnas Kollektiv. The following commands can be used:\n
+            \n/print - prints current schedule
+            \n/print_my_tasks - sends PM with the tasks you have in your room
+            \n/rotate - rotates the schedule one step down - this is done automatically every sunday so probably never use this :)
+            \n/help - shows this message :)
+            \nhave fun cleaning suckers, i\'m a robot so i dont have to do shit \o/""")
 
 def print_tasks(bot,update):
     user = update.message.from_user
-
+    print("Attempting to print tasks for user: " + str(user))
+    username = ''
+    for userid, name in USERS.items():
+        print(str(App.config(userid)))
+        if App.config(userid) == user.id:
+            print("Username found: " + name)
+            username = name
     for room, room_user in CLEANING_SCHEDULE.items():
-        if room_user == user.first_name:
+        if room_user == username:
             print('Printing tasks for room: ' + room + " and user " + str(user))
-            bot.send_message(user.id, text='ett två tre')
+            tasks = ''
+            for task in App.config(room): tasks += task+'\n'
+            bot.send_message(user.id, text=str(tasks))
 
 # Log errors caused by Updates
 def error(bot, update, error):
@@ -83,7 +93,7 @@ def main():
     """INIT SLASKTRATT_BOT"""
 
     # Eventhandler takes api token from botfather msg
-    updater = Updater(config.api_token)
+    updater = Updater(App.config('api_token'))
     jobq = updater.job_queue
 
     # Dispatcher takes care of handlers
