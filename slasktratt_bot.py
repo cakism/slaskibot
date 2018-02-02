@@ -11,9 +11,9 @@ log = logging.getLogger(__name__)
 
 
 #### MAKE STATIC OR IN A FILE OR SOMETHING
-CLEANING_SCHEDULE = {'1_kitchen':'Snadrian','2_big_bath':'Dempan', '3_small_bath':'kakan', '4_livingroom':'Luuli'}
-ROOMS = {'1_kitchen':'Köket', '2_big_bath':'Stora badrummet', '3_small_bath':'Lilla badrummet', '4_livingroom':'Vardagsrum+hall'}
-USERS = {'snadrian_id':'Snadrian', 'dempan_id':'Dempan', 'luuli_id':'Luuli', 'cakism_id':'kakan'}
+CLEANING_SCHEDULE = {'1_kitchen':'Dempan','2_livingroom':'Luuli', '3_small_bath':'Kakan', '4_big_bath':'Snadrian'}
+ROOMS = {'1_kitchen':'Köket', '2_livingroom':'Vardagsrum+hall', '3_small_bath':'Lilla badrummet', '4_big_bath':'Stora badrummet'}
+USERS = {'snadrian_id':'Snadrian', 'dempan_id':'Dempan', 'luuli_id':'Luuli', 'cakism_id':'Kakan'}
 
 # Reply to /start with greeting message
 def start(bot, update, args, job_queue, chat_data):
@@ -37,9 +37,7 @@ def print_tasks(bot,update):
     print("Attempting to print tasks for user: " + str(user))
     username = ''
     for userid, name in USERS.items():
-        print(str(App.config(userid)))
         if App.config(userid) == user.id:
-            print("Username found: " + name)
             username = name
     for room, room_user in CLEANING_SCHEDULE.items():
         if room_user == username:
@@ -47,6 +45,17 @@ def print_tasks(bot,update):
             tasks = ''
             for task in App.config(room): tasks += task+'\n'
             bot.send_message(user.id, text=str(tasks))
+
+def print_reminders(bot, update):
+    for userid, name in USERS.items():
+        for room, room_user in CLEANING_SCHEDULE.items():
+            if room_user == name:
+                print('Sending out cleaning tasks reminder for room: ' + room + ' to user: ' + name)
+                tasks = ''
+                for task in App.config(room): tasks += task+'\n'
+                bot.send_message(user.id, text=str(tasks))
+
+
 
 # Log errors caused by Updates
 def error(bot, update, error):
@@ -108,6 +117,10 @@ def main():
     dp.add_handler(CommandHandler('print_my_tasks', print_tasks))
     dp.add_handler(CommandHandler('rotate', rotate_schedule))
     dp.add_handler(CommandHandler('help', help))
+
+    # Run the rotation job every monday
+    rotation_job = dp.run_daily(rotate_schedule, datetime.time(12,0,0), [0])
+    rotation_job = dp.run_daily(print_reminders, datetime.time(12,0,0), [4])
 
     # Register error handler
     dp.add_error_handler(error)
