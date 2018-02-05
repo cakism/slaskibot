@@ -1,7 +1,7 @@
 # coding=UTF-8
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from config import App
-import logging, telegram
+import logging, telegram, datetime
 
 #Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -94,7 +94,10 @@ def rotate_schedule(bot, update):
 
     print('After rotation: '+str(CLEANING_SCHEDULE))
 
+def add_timed_handlers(bot, update, job_queue):
 
+    rotation_job = job_queue.run_daily(rotate_schedule, datetime.time(12,0,0), (0,))
+    reminder_job = job_queue.run_daily(print_reminders, datetime.time(12,0,0), (4,))
 
 
 # MAIN LOOP
@@ -118,9 +121,8 @@ def main():
     dp.add_handler(CommandHandler('rotate', rotate_schedule))
     dp.add_handler(CommandHandler('help', help))
 
-    # Run the rotation job every monday
-    rotation_job = dp.run_daily(rotate_schedule, datetime.time(12,0,0), [0])
-    rotation_job = dp.run_daily(print_reminders, datetime.time(12,0,0), [4])
+    # Run the rotation job every monday and reminder job every friday
+    dp.add_handler(CommandHandler('timer', add_timed_handlers, pass_job_queue=True))
 
     # Register error handler
     dp.add_error_handler(error)
