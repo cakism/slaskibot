@@ -98,6 +98,7 @@ def rotate_schedule(bot, update, args):
         numTimes = int(args[0])
     except ValueError:
         bot.send_message(update.message.chat_id, text='Gotta put in a number buddy, comon!', parse_mode=telegram.ParseMode.MARKDOWN)
+        return -1
     people=[]
     for key in sorted(CLEANING_SCHEDULE):
         people.append(str(CLEANING_SCHEDULE[key]))
