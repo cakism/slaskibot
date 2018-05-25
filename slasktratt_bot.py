@@ -48,8 +48,6 @@ def print_tasks(bot,update):
 
 def print_reminders(bot, update):
     print('Printing reminders for tasks in each room')
-    user = update.message.from_user
-    log.info('User: '+user)
     for useridkey, name in USERS.items():
         for room, room_user in CLEANING_SCHEDULE.items():
             if room_user == name:
@@ -84,21 +82,26 @@ def print_cleaning_schedule(bot, update):
 
 def print_excel_link(bot, update):
     print('PRINTING LINK TO EXCEL SHEET')
-    bot.send_message(update.message.chat_id, text='Fyll i utlÃgg hÃr: '+App.config('excel_link'), parse_mode=telegram.ParseMode.MARKDOWN)
+    bot.send_message(update.message.chat_id, text='Fyll i utlägg här: '+App.config('excel_link'), parse_mode=telegram.ParseMode.MARKDOWN)
 
 
 def rotate(l, n):
     return l[-n:] + l[:-n]
 
 def rotate_schedule_and_print(bot, job):
-    rotate_schedule(bot, job)
+    rotate_schedule(bot, job, ['1',])
     print_cleaning_schedule(bot, job)
 
-def rotate_schedule(bot, update):
+def rotate_schedule(bot, update, args):
+    numTimes = 1
+    try:
+        numTimes = int(args[0])
+    except ValueError:
+        bot.send_message(update.message.chat_id, text='Gotta put in a number buddy, comon!', parse_mode=telegram.ParseMode.MARKDOWN)
     people=[]
     for key in sorted(CLEANING_SCHEDULE):
         people.append(str(CLEANING_SCHEDULE[key]))
-    people_rot = rotate(people, 1)
+    people_rot = rotate(people, numTimes)
     print('Rotating people for cleaning schedule\nCurrent schedule: '+str(CLEANING_SCHEDULE))
     for idx, key in enumerate(sorted(CLEANING_SCHEDULE)):
         CLEANING_SCHEDULE[key]=people_rot[idx]
@@ -110,7 +113,7 @@ def add_timed_handlers(bot, update, job_queue):
     # Run rotation job mondays at 12:00
     rotation_job = job_queue.run_daily(rotate_schedule_and_print, datetime.time(15,5,0), (0,), context=App.config('chat_id'))
     # Run print reminders job at fridays 12:00
-    reminder_job = job_queue.run_daily(print_reminders, datetime.time(13,15,0), (4,))
+    reminder_job = job_queue.run_daily(print_reminders, datetime.time(13,45,0), (4,))
 
 
 # MAIN LOOP
@@ -133,7 +136,7 @@ def main():
     dp.add_handler(CommandHandler('print_my_tasks', print_tasks))
     dp.add_handler(CommandHandler('print_all_tasks', print_reminders))
     dp.add_handler(CommandHandler('print_excel_link', print_excel_link))
-    dp.add_handler(CommandHandler('rotate', rotate_schedule))
+    dp.add_handler(CommandHandler('rotate', rotate_schedule, pass_args=True))
     dp.add_handler(CommandHandler('help', help))
 
     # Run the rotation job every monday and reminder job every friday
