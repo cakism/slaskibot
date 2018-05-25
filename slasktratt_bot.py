@@ -20,7 +20,6 @@ def start(bot, update, args, job_queue, chat_data):
     update.message.reply_text('---SLASKTRATTITRON INITIALIZED---\nUse command /help for available commands')
     chat_id = update.message.chat_id
     job = job_queue.run_once(print_cleaning_schedule, 3, context=chat_id)
-    chat_data['job'] = job
 
 
 # Reply to /help with instructions of use
@@ -28,6 +27,7 @@ def help(bot, update):
     update.message.reply_text("""This bot is intended to keep track of the städschema for Slasktrattarnas Kollektiv. The following commands can be used:\n
             \n/print - prints current schedule
             \n/print_my_tasks - sends PM with the tasks you have in your room
+            \n/print_excel_link - prints the link to the google excel sheet where we input stuff we've bought!
             \n/rotate - rotates the schedule one step down - this is done automatically every sunday so probably never use this :)
             \n/help - shows this message :)
             \nhave fun cleaning suckers, i\'m a robot so i dont have to do shit \o/""")
@@ -47,7 +47,9 @@ def print_tasks(bot,update):
             bot.send_message(user.id, text=str(tasks))
 
 def print_reminders(bot, update):
+    print('Printing reminders for tasks in each room')
     user = update.message.from_user
+    log.info('User: '+user)
     for useridkey, name in USERS.items():
         for room, room_user in CLEANING_SCHEDULE.items():
             if room_user == name:
@@ -67,17 +69,30 @@ def error(bot, update, error):
 def print_cleaning_schedule(bot, update):
     print('PRINTING CLEANING SCHEDULE')
     schedule=''
+    try:
+        recipient = update.context
+    except AttributeError:
+        recipient = update.message.chat_id
 
     for key in sorted(ROOMS):
         room = ROOMS[key]
         person = CLEANING_SCHEDULE[key]
         schedule+='*{:20s}* _{:>10s}_'.format(room, person)
         schedule+='\n'
-    bot.send_message(update.message.chat_id, text=
+    bot.send_message(recipient, text=
             'Veckans städschema:\n'+schedule, parse_mode=telegram.ParseMode.MARKDOWN)
+
+def print_excel_link(bot, update):
+    print('PRINTING LINK TO EXCEL SHEET')
+    bot.send_message(update.message.chat_id, text='Fyll i utlÃgg hÃr: '+App.config('excel_link'), parse_mode=telegram.ParseMode.MARKDOWN)
+
 
 def rotate(l, n):
     return l[-n:] + l[:-n]
+
+def rotate_schedule_and_print(bot, job):
+    rotate_schedule(bot, job)
+    print_cleaning_schedule(bot, job)
 
 def rotate_schedule(bot, update):
     people=[]
@@ -91,10 +106,11 @@ def rotate_schedule(bot, update):
     print('After rotation: '+str(CLEANING_SCHEDULE))
 
 def add_timed_handlers(bot, update, job_queue):
+    print('Enabling scheduled jobs')
     # Run rotation job mondays at 12:00
-    rotation_job = job_queue.run_daily(rotate_schedule, datetime.time(12,0,0), (0,))
+    rotation_job = job_queue.run_daily(rotate_schedule_and_print, datetime.time(15,5,0), (0,), context=App.config('chat_id'))
     # Run print reminders job at fridays 12:00
-    reminder_job = job_queue.run_daily(print_reminders, datetime.time(12,0,0), (4,))
+    reminder_job = job_queue.run_daily(print_reminders, datetime.time(13,15,0), (4,))
 
 
 # MAIN LOOP
@@ -116,11 +132,12 @@ def main():
     dp.add_handler(CommandHandler('print', print_cleaning_schedule))
     dp.add_handler(CommandHandler('print_my_tasks', print_tasks))
     dp.add_handler(CommandHandler('print_all_tasks', print_reminders))
+    dp.add_handler(CommandHandler('print_excel_link', print_excel_link))
     dp.add_handler(CommandHandler('rotate', rotate_schedule))
     dp.add_handler(CommandHandler('help', help))
 
     # Run the rotation job every monday and reminder job every friday
-    dp.add_handler(CommandHandler('timer', add_timed_handlers, pass_job_queue=True))
+    dp.add_handler(CommandHandler('set_timers', add_timed_handlers, pass_job_queue=True))
 
     # Register error handler
     dp.add_error_handler(error)
